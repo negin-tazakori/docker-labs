@@ -10,4 +10,4 @@ for img in "${IMAGES[@]}"; do
     docker push "$REGISTRY/$img:latest"
 done
 
-echo "Pushed ${IMAGES[0]} to $REGISTRY."
+echo "Pushed ${IMAGES[*]} to $REGISTRY."
