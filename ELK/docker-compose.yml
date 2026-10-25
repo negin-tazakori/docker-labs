@@ -1,0 +1,85 @@
+services:
+  elasticsearch: 
+    image: elasticsearch:${ELK_VERSION}
+    container_name: elasticsearch
+
+    environment: 
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+    networks:
+      - elk-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped     
+
+
+
+  kibana:
+    image: kibana:${ELK_VERSION}
+    container_name: kibana
+
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+
+    volumes:
+      - kibana-data:/usr/share/kibana/data
+    
+    ports:
+      - "5601:5601"
+    networks:
+      - elk-net
+
+    depends_on: 
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+          
+
+  logstash:
+    image: logstash:${ELK_VERSION}
+    container_name: logstash
+    
+    environment:
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m      
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - logstash-data:/usr/share/logstash/data
+
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+    networks:
+      - elk-net
+
+    depends_on: 
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+        
+
+
+
+volumes:
+  es-data:
+  kibana-data:
+  logstash-data:
+
+
+networks:
+  elk-net:
+    driver: bridge
